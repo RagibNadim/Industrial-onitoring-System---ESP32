@@ -1,0 +1,834 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ESP32 Industrial Automation Simulator v4</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Rajdhani:wght@400;500;600;700&display=swap');
+
+  :root {
+    --bg: #ffffff;
+    --bg2: #f4f6fa;
+    --bg3: #eaf0f8;
+    --bg4: #dde6f2;
+    --bg5: #cdd8ea;
+    --border: rgba(80,120,180,0.13);
+    --border2: rgba(80,120,180,0.22);
+    --text: #1a2540;
+    --text2: #4a6080;
+    --text3: #8aa0bc;
+    --green: #00b87a;
+    --green-bg: rgba(0,184,122,0.09);
+    --amber: #d48a00;
+    --amber-bg: rgba(212,138,0,0.09);
+    --red: #e0203a;
+    --red-bg: rgba(224,32,58,0.08);
+    --blue: #0077cc;
+    --blue-bg: rgba(0,119,204,0.08);
+    --purple: #7c44dd;
+    --teal: #00a89a;
+    --cyan: #0099bb;
+    --m1: #00b87a;
+    --m2: #0077cc;
+    --m3: #7c44dd;
+    --pump: #d48a00;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 18px;
+    min-height: 100vh;
+    padding: 22px;
+  }
+
+  .header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 18px; padding-bottom: 16px;
+    border-bottom: 1.5px solid var(--border2);
+  }
+  .header-left { display: flex; align-items: center; gap: 13px; }
+  .chip-icon {
+    width: 50px; height: 50px;
+    background: linear-gradient(135deg, #e0eaf8, #cdd8ea);
+    border: 1.5px solid rgba(0,119,204,0.25);
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 26px;
+    box-shadow: 0 2px 10px rgba(0,119,204,0.1);
+  }
+  .header-title { font-size: 22px; font-weight: 700; color: var(--text); letter-spacing: 0.4px; }
+  .header-sub { font-size: 14px; color: var(--text2); margin-top: 2px; font-family: 'JetBrains Mono', monospace; }
+
+  .run-btn {
+    display: flex; align-items: center; gap: 6px;
+    padding: 11px 26px; border-radius: 8px;
+    font-size: 15px; font-weight: 700; font-family: 'JetBrains Mono', monospace;
+    cursor: pointer; border: none; transition: all .2s;
+    background: var(--green); color: #fff; letter-spacing: 1px;
+    box-shadow: 0 2px 8px rgba(0,184,122,0.2);
+  }
+  .run-btn.running { background: var(--red); color: #fff; box-shadow: 0 2px 8px rgba(224,32,58,0.2); }
+  .run-btn:hover { opacity: .88; transform: translateY(-1px); }
+
+  .master-btn {
+    padding: 11px 22px; border-radius: 8px;
+    font-size: 15px; font-weight: 700; cursor: pointer;
+    transition: all .2s; letter-spacing: .6px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .master-on  { background: rgba(224,32,58,0.08); color: var(--red); border: 1.5px solid rgba(224,32,58,0.3) !important; }
+  .master-off { background: rgba(0,184,122,0.09); color: var(--green); border: 1.5px solid rgba(0,184,122,0.3) !important; }
+  .master-btn:hover { opacity: .85; transform: translateY(-1px); }
+
+  .main-wrap { display: grid; grid-template-columns: 280px 1fr; gap: 13px; }
+  .right-col { display: flex; flex-direction: column; gap: 13px; }
+  .row-top { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 13px; }
+  .row-mid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 13px; }
+  .row-bot { display: grid; grid-template-columns: 1fr 1fr; gap: 13px; }
+
+  .panel {
+    background: var(--bg2);
+    border: 1.5px solid var(--border);
+    border-radius: 11px;
+    padding: 15px 17px;
+    box-shadow: 0 1px 6px rgba(80,120,180,0.06);
+  }
+  .panel-title {
+    font-size: 13px; font-weight: 700; letter-spacing: 1.2px;
+    text-transform: uppercase; color: var(--text3);
+    margin-bottom: 14px; display: flex; align-items: center; gap: 7px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .panel-title::before {
+    content: ''; display: inline-block;
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--text3);
+  }
+  .panel-title.green::before  { background: var(--green);  box-shadow: 0 0 6px var(--green); }
+  .panel-title.amber::before  { background: var(--amber);  box-shadow: 0 0 6px var(--amber); }
+  .panel-title.red::before    { background: var(--red);    box-shadow: 0 0 6px var(--red); }
+  .panel-title.blue::before   { background: var(--blue);   box-shadow: 0 0 6px var(--blue); }
+  .panel-title.purple::before { background: var(--purple); box-shadow: 0 0 6px var(--purple); }
+  .panel-title.cyan::before   { background: var(--cyan);   box-shadow: 0 0 6px var(--cyan); }
+
+  .ctrl-row { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+  .ctrl-label { font-size: 14px; color: var(--text2); min-width: 118px; font-weight: 600; }
+  input[type=range] {
+    flex: 1; height: 5px;
+    -webkit-appearance: none; appearance: none;
+    background: var(--bg5); border-radius: 2px; outline: none;
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none; width: 16px; height: 16px; border-radius: 50%;
+    background: var(--blue); cursor: pointer;
+    box-shadow: 0 0 5px rgba(0,119,204,0.35);
+  }
+  .ctrl-val {
+    min-width: 48px; text-align: right;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 14px; font-weight: 700; color: var(--text);
+  }
+
+  .metric {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 6px 0; border-bottom: 1px solid var(--border);
+  }
+  .metric:last-child { border-bottom: none; }
+  .metric-label { font-size: 14px; color: var(--text2); font-weight: 600; }
+  .metric-val { font-family: 'JetBrains Mono', monospace; font-size: 15px; font-weight: 700; }
+  .v-ok     { color: var(--green); }
+  .v-warn   { color: var(--amber); }
+  .v-danger { color: var(--red); }
+  .v-blue   { color: var(--blue); }
+
+  /* ── DEVICE CARDS ── */
+  .device-card {
+    background: var(--bg3);
+    border: 1.5px solid var(--border);
+    border-radius: 11px;
+    padding: 13px 14px;
+    transition: border-color .3s, box-shadow .3s;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 1px 5px rgba(80,120,180,0.07);
+  }
+  .device-card::before {
+    content: '';
+    position: absolute; top: 0; left: 0; right: 0; height: 3px;
+    border-radius: 11px 11px 0 0;
+  }
+  .card-m1::before   { background: var(--m1);  box-shadow: 0 0 8px var(--m1); }
+  .card-m2::before   { background: var(--m2);  box-shadow: 0 0 8px var(--m2); }
+  .card-m3::before   { background: var(--m3);  box-shadow: 0 0 8px var(--m3); }
+  .card-pump::before { background: var(--pump); box-shadow: 0 0 8px var(--pump); }
+
+  .card-head {
+    display: flex; justify-content: space-between; align-items: flex-start;
+    margin-bottom: 11px;
+  }
+  .card-name { font-size: 17px; font-weight: 700; color: var(--text); letter-spacing: .3px; }
+  .card-gpio { font-size: 12px; color: var(--text3); font-family: 'JetBrains Mono', monospace; margin-top: 2px; }
+
+  .badge {
+    display: inline-flex; align-items: center;
+    padding: 3px 10px; border-radius: 20px;
+    font-size: 11px; font-weight: 700; letter-spacing: .7px;
+    text-transform: uppercase; font-family: 'JetBrains Mono', monospace;
+  }
+  .b-ok    { background: rgba(0,184,122,0.12);  color: var(--green); }
+  .b-off   { background: var(--bg5);             color: var(--text3); }
+  .b-warn  { background: rgba(212,138,0,0.12);   color: var(--amber); }
+  .b-danger{ background: rgba(224,32,58,0.12);   color: var(--red); }
+
+  .spd-row { display: flex; align-items: center; gap: 8px; margin: 8px 0 7px; }
+  .spd-label { font-size: 12px; color: var(--text3); font-family: 'JetBrains Mono', monospace; min-width: 34px; }
+  .bar-bg  { flex: 1; background: var(--bg5); border-radius: 3px; height: 8px; overflow: hidden; }
+  .bar-fill{ height: 8px; border-radius: 3px; transition: width .4s ease; }
+  .spd-val { font-size: 14px; font-family: 'JetBrains Mono', monospace; font-weight: 700; min-width: 36px; text-align: right; }
+
+  .thresh-section { border-top: 1px solid var(--border); margin-top: 10px; padding-top: 10px; }
+  .thresh-title {
+    font-size: 12px; color: var(--text3); font-weight: 700; letter-spacing: 1px;
+    text-transform: uppercase; font-family: 'JetBrains Mono', monospace;
+    margin-bottom: 10px;
+  }
+  .thresh-row { display: flex; align-items: center; gap: 6px; margin-bottom: 7px; }
+  .thresh-icon { font-size: 14px; min-width: 20px; text-align: center; }
+  .thresh-lbl  { font-size: 13px; color: var(--text2); min-width: 82px; font-weight: 600; }
+  input[type=range].t-slider {
+    flex: 1; height: 4px;
+    -webkit-appearance: none; appearance: none;
+    background: var(--bg5); border-radius: 2px; outline: none;
+  }
+  input[type=range].t-slider::-webkit-slider-thumb {
+    -webkit-appearance: none; width: 12px; height: 12px; border-radius: 50%; cursor: pointer;
+  }
+  .t-m1::-webkit-slider-thumb   { background: var(--m1);  box-shadow: 0 0 4px var(--m1); }
+  .t-m2::-webkit-slider-thumb   { background: var(--m2);  box-shadow: 0 0 4px var(--m2); }
+  .t-m3::-webkit-slider-thumb   { background: var(--m3);  box-shadow: 0 0 4px var(--m3); }
+  .t-pump::-webkit-slider-thumb { background: var(--pump); box-shadow: 0 0 4px var(--pump); }
+  .thresh-val {
+    min-width: 42px; text-align: right;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px; font-weight: 700; color: var(--text);
+  }
+
+  .dev-btn {
+    width: 100%; padding: 8px 0; border-radius: 7px;
+    font-size: 13px; font-weight: 700; cursor: pointer;
+    border: none; transition: all .15s; letter-spacing: .5px;
+    font-family: 'JetBrains Mono', monospace;
+    margin-top: 9px;
+  }
+  .dev-on  { background: rgba(0,184,122,0.1);  color: var(--green); border: 1.5px solid rgba(0,184,122,0.25) !important; }
+  .dev-off { background: rgba(224,32,58,0.08); color: var(--red);   border: 1.5px solid rgba(224,32,58,0.25) !important; }
+  .dev-btn:hover { opacity: .8; }
+
+  .fault-tag {
+    font-size: 10px; font-family: 'JetBrains Mono', monospace;
+    padding: 3px 7px; border-radius: 4px; margin-top: 6px;
+    font-weight: 700; display: inline-block;
+  }
+  .ft-oc   { background: rgba(224,32,58,0.12);   color: var(--red); }
+  .ft-uv   { background: rgba(212,138,0,0.12);   color: var(--amber); }
+  .ft-temp { background: rgba(224,32,58,0.12);   color: #c0203a; }
+  .ft-hum  { background: rgba(0,119,204,0.1);    color: var(--blue); }
+  .ft-load { background: rgba(124,68,221,0.1);   color: var(--purple); }
+
+  /* ── OLED — keep dark for realism ── */
+  .oled {
+    background: #030804;
+    border: 1.5px solid #0d1f0d;
+    border-radius: 8px; padding: 12px 14px;
+    font-family: 'JetBrains Mono', monospace; font-size: 14px;
+    line-height: 2; min-height: 98px;
+    box-shadow: inset 0 0 24px rgba(0,255,80,0.03);
+  }
+  .oled-line { color: #00e676; }
+  .oled-dim  { color: #173024; }
+  .oled-warn { color: #ff9800; }
+  .oled-err  { color: #ff1744; animation: blink .6s step-end infinite; }
+  @keyframes blink { 50% { opacity: 0; } }
+
+  /* ── SERIAL LOG — keep dark for realism ── */
+  .log-box {
+    background: #0a0d14;
+    border: 1.5px solid var(--border2);
+    border-radius: 8px; padding: 10px 12px;
+    font-family: 'JetBrains Mono', monospace; font-size: 13px;
+    line-height: 1.8; height: 132px; overflow-y: auto;
+  }
+  .log-box::-webkit-scrollbar { width: 3px; }
+  .log-box::-webkit-scrollbar-thumb { background: #2a3550; border-radius: 2px; }
+  .log-ok   { color: #00e5a0; }
+  .log-warn { color: #ffaa00; }
+  .log-err  { color: #ff3355; }
+  .log-info { color: #00aaff; }
+
+  .fault-banner {
+    border-radius: 10px; padding: 10px 14px;
+    margin-top: 13px;
+    background: var(--bg2); border: 1.5px solid rgba(224,32,58,0.25);
+    flex-direction: column; gap: 6px;
+    animation: slideIn .3s ease;
+    display: none;
+    box-shadow: 0 2px 10px rgba(224,32,58,0.08);
+  }
+  .fault-banner.visible { display: flex; }
+  @keyframes slideIn { from { opacity:0; transform:translateY(-5px); } }
+  .fault-line {
+    font-size: 14px; font-weight: 600; padding: 6px 11px;
+    border-radius: 6px; letter-spacing: .2px;
+    display: flex; align-items: center; justify-content: space-between;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .fb-emergency { background: rgba(224,32,58,0.1); border: 1px solid rgba(224,32,58,0.3); color: var(--red); font-weight: 700; animation: blink .7s step-end infinite; }
+  .fb-motor      { background: rgba(224,32,58,0.06); border: 1px solid rgba(224,32,58,0.15); color: #c0203a; }
+  .fb-motor.warn { background: rgba(212,138,0,0.07); border: 1px solid rgba(212,138,0,0.2);  color: var(--amber); }
+  .fb-pump       { background: rgba(212,138,0,0.07); border: 1px solid rgba(212,138,0,0.2);  color: var(--amber); }
+  .clear-btn {
+    padding: 3px 9px; font-size: 13px; border-radius: 4px;
+    background: rgba(80,120,180,0.1); color: var(--text2);
+    border: none; cursor: pointer; font-family: 'JetBrains Mono', monospace;
+  }
+  .clear-btn:hover { background: rgba(80,120,180,0.18); }
+
+
+
+
+  .s-gray  { background: var(--text3); }
+
+  .soc-bar-bg { background: var(--bg5); border-radius: 3px; height: 5px; overflow: hidden; margin-top: 5px; }
+  .soc-bar    { height: 5px; border-radius: 3px; transition: width .5s, background .5s; }
+
+  .tracker-wrap { display: flex; align-items: center; gap: 8px; margin-top: 9px; }
+  .ldr-label { font-size: 11px; color: var(--text3); min-width: 14px; font-family: 'JetBrains Mono', monospace; }
+  .ldr-track { flex: 1; }
+  .ldr-bg    { background: var(--bg5); border-radius: 3px; height: 8px; overflow: hidden; }
+  .ldr-fill  { height: 6px; border-radius: 3px; background: var(--amber); transition: width .3s; }
+  .track-arrow { font-size: 20px; width: 26px; text-align: center; color: var(--teal); }
+
+  .scenario-btn {
+    border-radius: 7px; padding: 7px 11px; font-size: 14px; font-weight: 700;
+    cursor: pointer; text-align: left; font-family: 'Rajdhani', sans-serif; letter-spacing: .3px;
+    transition: opacity .15s;
+  }
+  .scenario-btn:hover { opacity: .8; }
+
+  @media (max-width: 900px) {
+    .main-wrap { grid-template-columns: 1fr; }
+    .row-top   { grid-template-columns: 1fr 1fr; }
+    .row-mid   { grid-template-columns: 1fr 1fr; }
+    .row-bot   { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-left">
+    <div class="chip-icon">⚡</div>
+    <div>
+      <div class="header-title">ESP32 Industrial Automation Simulator</div>
+      <div class="header-sub">Per-Device Fault Protection · Individual Thresholds · Auto-Shutdown</div>
+    </div>
+  </div>
+  <div style="display:flex;gap:9px;align-items:center">
+    <button class="master-btn master-on" id="masterBtn" onclick="toggleMasterPower()">🔴 SYS OFF</button>
+    <button class="run-btn" id="runBtn" onclick="toggleRun()">▶ START</button>
+  </div>
+</div>
+
+<div class="main-wrap">
+
+  <div style="display:flex;flex-direction:column;gap:13px">
+    <div class="panel">
+      <div class="panel-title blue">System Input Controls</div>
+      <div class="ctrl-row">
+        <span class="ctrl-label">☀ Solar</span>
+        <input type="range" id="solar" min="0" max="100" value="70" oninput="updateLabels()">
+        <span class="ctrl-val" id="solarV">70%</span>
+      </div>
+      <div class="ctrl-row">
+        <span class="ctrl-label">⚡ Bus Current</span>
+        <input type="range" id="busCurrent" min="0" max="40" value="10" step="1" oninput="updateLabels()">
+        <span class="ctrl-val" id="busCurrentV">1.0A</span>
+      </div>
+      <div class="ctrl-row">
+        <span class="ctrl-label">◐ LDR Left</span>
+        <input type="range" id="ldrL" min="0" max="100" value="65" oninput="updateLabels()">
+        <span class="ctrl-val" id="ldrLV">65%</span>
+      </div>
+      <div class="ctrl-row">
+        <span class="ctrl-label">◑ LDR Right</span>
+        <input type="range" id="ldrR" min="0" max="100" value="45" oninput="updateLabels()">
+        <span class="ctrl-val" id="ldrRV">45%</span>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title amber">Quick Fault Tests</div>
+      <div style="display:flex;flex-direction:column;gap:7px">
+        <button class="scenario-btn" onclick="setScenario('overcurrent')" style="background:var(--red-bg);color:var(--red);border:1.5px solid rgba(224,32,58,.2)">⚡ Overcurrent Fault</button>
+        <button class="scenario-btn" onclick="setScenario('undervoltage')" style="background:var(--amber-bg);color:var(--amber);border:1.5px solid rgba(212,138,0,.2)">⚠ Undervoltage Trip</button>
+        <button class="scenario-btn" onclick="setScenario('overheat')" style="background:var(--red-bg);color:var(--red);border:1.5px solid rgba(224,32,58,.2)">🌡 Overheat Shutdown</button>
+        <button class="scenario-btn" onclick="setScenario('overhum')" style="background:var(--blue-bg);color:var(--blue);border:1.5px solid rgba(0,119,204,.2)">💧 High Humidity Trip</button>
+        <button class="scenario-btn" onclick="setScenario('overload')" style="background:rgba(124,68,221,0.08);color:var(--purple);border:1.5px solid rgba(124,68,221,.2)">📈 Overload Demand</button>
+        <button class="scenario-btn" onclick="setScenario('normal')" style="background:var(--green-bg);color:var(--green);border:1.5px solid rgba(0,184,122,.2)">✓ Normal Operation</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="right-col">
+    <div class="row-top">
+
+      <div class="panel">
+        <div class="panel-title green">Power (INA219)</div>
+        <div class="metric"><span class="metric-label">Solar V</span><span class="metric-val" id="pvV">—</span></div>
+        <div class="metric"><span class="metric-label">Battery V</span><span class="metric-val" id="batV">—</span></div>
+        <div class="metric"><span class="metric-label">Bus V</span><span class="metric-val" id="busV">—</span></div>
+        <div class="metric"><span class="metric-label">Bus Current</span><span class="metric-val" id="busI">—</span></div>
+        <div class="metric"><span class="metric-label">Power</span><span class="metric-val" id="busP">—</span></div>
+        <div style="margin-top:9px">
+          <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+            <span style="font-size:11px;color:var(--text2);font-weight:600;">Battery SoC</span>
+            <span class="metric-val" id="socVal" style="font-size:12px">—</span>
+          </div>
+          <div class="soc-bar-bg"><div class="soc-bar" id="socBar" style="width:0%"></div></div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-title purple">Environment (DHT11)</div>
+        <div class="metric"><span class="metric-label">Temperature</span><span class="metric-val" id="tmpDisp">—</span></div>
+        <div class="metric"><span class="metric-label">Humidity</span><span class="metric-val" id="humDisp">—</span></div>
+        <div class="metric"><span class="metric-label">Irradiance</span><span class="metric-val" id="luxDisp">—</span></div>
+        <div class="metric"><span class="metric-label">Env Status</span><span class="metric-val" id="envStat">—</span></div>
+        <div style="margin-top:11px;padding-top:11px;border-top:1px solid var(--border)">
+          <div class="ctrl-row" style="margin-bottom:8px">
+            <span class="ctrl-label" style="min-width:82px">🌡 Temp (°C)</span>
+            <input type="range" id="temp" min="20" max="60" value="30" oninput="updateLabels()">
+            <span class="ctrl-val" id="tempV">30°C</span>
+          </div>
+          <div class="ctrl-row" style="margin-bottom:0">
+            <span class="ctrl-label" style="min-width:82px">💧 Humidity</span>
+            <input type="range" id="hum" min="20" max="100" value="55" oninput="updateLabels()">
+            <span class="ctrl-val" id="humV">55%</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-title cyan">Solar Tracker (LDR)</div>
+        <div class="tracker-wrap">
+          <span class="ldr-label">L</span>
+          <div class="ldr-track"><div class="ldr-bg"><div class="ldr-fill" id="ldrLBar" style="width:65%"></div></div></div>
+          <div class="track-arrow" id="trackArrow">→</div>
+          <div class="ldr-track"><div class="ldr-bg"><div class="ldr-fill" id="ldrRBar" style="width:45%"></div></div></div>
+          <span class="ldr-label" style="text-align:right">R</span>
+        </div>
+        <div style="font-size:11px;color:var(--text2);margin-top:7px;text-align:center;font-family:'JetBrains Mono',monospace;font-weight:600;" id="trackMsg">—</div>
+        <div style="margin-top:13px;padding-top:11px;border-top:1px solid var(--border)">
+          <div class="panel-title blue" style="margin-bottom:9px">OLED (I²C 0x3C)</div>
+          <div class="oled" id="oledDisp">
+            <div class="oled-dim">┌────────────────────┐</div>
+            <div class="oled-dim">│  System ready...   │</div>
+            <div class="oled-dim">│  Press START ▶     │</div>
+            <div class="oled-dim">└────────────────────┘</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="row-mid" id="deviceRow"></div>
+
+    <div class="panel">
+      <div class="panel-title" style="margin-bottom:7px">Serial Monitor Log</div>
+      <div class="log-box" id="logBox">
+        <div class="log-info">[boot] Waiting for simulation...</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="fault-banner" id="faultBanner"></div>
+
+
+<script>
+const DEVICES = [
+  { id:0, name:'Motor 1',    gpio:'GPIO12', color:'#00b87a', cls:'card-m1',   tcls:'t-m1',
+    tempMax:45, humMax:85, loadMax:80, currentMax:2.0 },
+  { id:1, name:'Motor 2',    gpio:'GPIO14', color:'#0077cc', cls:'card-m2',   tcls:'t-m2',
+    tempMax:42, humMax:80, loadMax:75, currentMax:1.8 },
+  { id:2, name:'Motor 3',    gpio:'GPIO27', color:'#7c44dd', cls:'card-m3',   tcls:'t-m3',
+    tempMax:50, humMax:90, loadMax:85, currentMax:2.2 },
+  { id:3, name:'Water Pump', gpio:'GPIO32', color:'#d48a00', cls:'card-pump', tcls:'t-pump',
+    tempMax:40, humMax:75, loadMax:70, currentMax:1.5 }
+];
+
+let running=false, simInt=null, tick=0, batSoC=72, logLines=[];
+let masterPower=true;
+const deviceEnabled    = [true,true,true,true];
+const deviceFaultState = [null,null,null,null];
+
+function buildDeviceCards() {
+  const row = document.getElementById('deviceRow');
+  row.innerHTML = '';
+  DEVICES.forEach(d => {
+    row.innerHTML += `
+    <div class="device-card ${d.cls}" id="dCard${d.id}">
+      <div class="card-head">
+        <div>
+          <div class="card-name">${d.name}</div>
+          <div class="card-gpio">${d.gpio}</div>
+        </div>
+        <span class="badge b-off" id="dBadge${d.id}">OFF</span>
+      </div>
+      <div class="spd-row">
+        <span class="spd-label">SPD</span>
+        <div class="bar-bg"><div class="bar-fill" id="dBar${d.id}" style="width:0%;background:${d.color}"></div></div>
+        <span class="spd-val" id="dSpd${d.id}" style="color:${d.color}">0%</span>
+      </div>
+      <div id="dFaultTag${d.id}"></div>
+      <div class="thresh-section">
+        <div class="thresh-title">⚙ Fault Thresholds</div>
+        <div class="thresh-row">
+          <span class="thresh-icon">🌡</span>
+          <span class="thresh-lbl">Temp Max</span>
+          <input type="range" class="t-slider ${d.tcls}" id="tTemp${d.id}" min="25" max="60" value="${d.tempMax}" step="1"
+            oninput="updateThresh(${d.id},'tempMax',this.value,'°C','tTempV${d.id}')">
+          <span class="thresh-val" id="tTempV${d.id}">${d.tempMax}°C</span>
+        </div>
+        <div class="thresh-row">
+          <span class="thresh-icon">💧</span>
+          <span class="thresh-lbl">Humidity Max</span>
+          <input type="range" class="t-slider ${d.tcls}" id="tHum${d.id}" min="40" max="100" value="${d.humMax}" step="1"
+            oninput="updateThresh(${d.id},'humMax',this.value,'%','tHumV${d.id}')">
+          <span class="thresh-val" id="tHumV${d.id}">${d.humMax}%</span>
+        </div>
+        <div class="thresh-row">
+          <span class="thresh-icon">📈</span>
+          <span class="thresh-lbl">Load Max</span>
+          <input type="range" class="t-slider ${d.tcls}" id="tLoad${d.id}" min="20" max="100" value="${d.loadMax}" step="1"
+            oninput="updateThresh(${d.id},'loadMax',this.value,'%','tLoadV${d.id}')">
+          <span class="thresh-val" id="tLoadV${d.id}">${d.loadMax}%</span>
+        </div>
+        <div class="thresh-row">
+          <span class="thresh-icon">⚡</span>
+          <span class="thresh-lbl">Current Max</span>
+          <input type="range" class="t-slider ${d.tcls}" id="tCurr${d.id}" min="5" max="40" value="${Math.round(d.currentMax*10)}" step="1"
+            oninput="updateThreshCurr(${d.id},this.value)">
+          <span class="thresh-val" id="tCurrV${d.id}">${d.currentMax.toFixed(1)}A</span>
+        </div>
+      </div>
+      <button class="dev-btn dev-on" id="dBtn${d.id}" onclick="toggleDevice(${d.id})">⏸ DISABLE</button>
+    </div>`;
+  });
+}
+
+function updateThresh(devId, key, val, unit, labelId) {
+  DEVICES[devId][key] = +val;
+  document.getElementById(labelId).textContent = val + unit;
+  deviceFaultState[devId] = null;
+}
+function updateThreshCurr(devId, rawVal) {
+  const v = rawVal / 10;
+  DEVICES[devId].currentMax = v;
+  document.getElementById(`tCurrV${devId}`).textContent = v.toFixed(1) + 'A';
+  deviceFaultState[devId] = null;
+}
+
+function toggleMasterPower() {
+  masterPower = !masterPower;
+  const btn = document.getElementById('masterBtn');
+  if (masterPower) {
+    btn.textContent = '🔴 SYS OFF'; btn.className = 'master-btn master-on';
+    for (let i=0;i<4;i++) deviceFaultState[i]=null;
+    addLog('MASTER POWER ON — all devices resumed','ok');
+  } else {
+    btn.textContent = '🟢 SYS ON'; btn.className = 'master-btn master-off';
+    addLog('MASTER POWER OFF — system shutdown by operator','warn');
+  }
+  updateMasterUI();
+}
+function updateMasterUI() {
+  DEVICES.forEach(d => {
+    const card = document.getElementById(`dCard${d.id}`);
+    if (!masterPower) {
+      document.getElementById(`dBadge${d.id}`).textContent='SYS-OFF';
+      document.getElementById(`dBadge${d.id}`).className='badge b-off';
+      document.getElementById(`dSpd${d.id}`).textContent='0%';
+      document.getElementById(`dBar${d.id}`).style.width='0%';
+      card.style.opacity='0.4';
+    } else {
+      card.style.opacity = deviceEnabled[d.id] ? '1' : '0.5';
+    }
+  });
+}
+
+function toggleDevice(i) {
+  if (!masterPower) return;
+  const btn  = document.getElementById(`dBtn${i}`);
+  const card = document.getElementById(`dCard${i}`);
+  if (deviceFaultState[i]) {
+    deviceFaultState[i]=null; deviceEnabled[i]=true;
+    btn.textContent='⏸ DISABLE'; btn.className='dev-btn dev-on';
+    btn.style.background=''; btn.style.color=''; btn.style.border='';
+    card.style.opacity='1'; card.style.border='1.5px solid var(--border)'; card.style.boxShadow='none';
+    document.getElementById(`dFaultTag${i}`).innerHTML='';
+    addLog(`${DEVICES[i].name} (${DEVICES[i].gpio}) — FAULT RESET → re-enabled`,'ok');
+    return;
+  }
+  deviceEnabled[i] = !deviceEnabled[i];
+  if (deviceEnabled[i]) {
+    btn.textContent='⏸ DISABLE'; btn.className='dev-btn dev-on';
+    btn.style.background=''; btn.style.color=''; btn.style.border='';
+    card.style.opacity='1';
+    addLog(`${DEVICES[i].name} (${DEVICES[i].gpio}) — manually ENABLED`,'ok');
+  } else {
+    btn.textContent='▶ ENABLE'; btn.className='dev-btn dev-off';
+    btn.style.background=''; btn.style.color=''; btn.style.border='';
+    card.style.opacity='0.5';
+    addLog(`${DEVICES[i].name} (${DEVICES[i].gpio}) — manually DISABLED`,'warn');
+  }
+}
+
+function clearDeviceFault(i) {
+  deviceFaultState[i]=null; deviceEnabled[i]=true;
+  const card=document.getElementById(`dCard${i}`);
+  const btn=document.getElementById(`dBtn${i}`);
+  card.style.border='1.5px solid var(--border)'; card.style.boxShadow='none'; card.style.opacity='1';
+  btn.textContent='⏸ DISABLE'; btn.className='dev-btn dev-on';
+  btn.style.background=''; btn.style.color=''; btn.style.border='';
+  document.getElementById(`dFaultTag${i}`).innerHTML='';
+  addLog(`${DEVICES[i].name} — fault cleared → re-enabled`,'ok');
+}
+
+function checkDeviceFault(devId, tempC, humPct, loadD, busI) {
+  if (!deviceEnabled[devId] || !masterPower) return;
+  const d = DEVICES[devId];
+  if (deviceFaultState[devId]) return;
+  if (tempC  > d.tempMax)    { deviceFaultState[devId]='OT_FAULT';   addLog(`${d.name} — OVERTEMP ${tempC}°C > ${d.tempMax}°C → AUTO SHUTDOWN`,'err'); return; }
+  if (humPct > d.humMax)     { deviceFaultState[devId]='HUM_FAULT';  addLog(`${d.name} — HIGH HUMIDITY ${humPct}% > ${d.humMax}% → AUTO SHUTDOWN`,'err'); return; }
+  if (loadD  > d.loadMax)    { deviceFaultState[devId]='LOAD_FAULT'; addLog(`${d.name} — OVERLOAD ${loadD}% > ${d.loadMax}% → AUTO SHUTDOWN`,'err'); return; }
+  if (busI   > d.currentMax) { deviceFaultState[devId]='OC_FAULT';   addLog(`${d.name} — OVERCURRENT ${busI.toFixed(2)}A > ${d.currentMax.toFixed(1)}A → AUTO SHUTDOWN`,'err'); return; }
+}
+
+function updateDeviceCards(loadD) {
+  const faultLines=[];
+  DEVICES.forEach(d => {
+    const i=d.id;
+    let spd=0, status='OFF', bClass='b-off';
+    const fault=deviceFaultState[i];
+    const card=document.getElementById(`dCard${i}`);
+    const fTag=document.getElementById(`dFaultTag${i}`);
+    const btn=document.getElementById(`dBtn${i}`);
+
+    if (!masterPower) {
+      status='SYS-OFF'; bClass='b-off';
+      card.style.boxShadow='none'; card.style.opacity='0.4'; fTag.innerHTML='';
+      btn.textContent='▶ ENABLE'; btn.className='dev-btn dev-off';
+    } else if (!deviceEnabled[i] && !fault) {
+      status='DISABLED'; bClass='b-off';
+      card.style.boxShadow='none'; card.style.opacity='0.5'; fTag.innerHTML='';
+      btn.textContent='▶ ENABLE'; btn.className='dev-btn dev-off';
+    } else if (fault) {
+      const FM={
+        'OT_FAULT':  {label:'🌡 OVERTEMP',   cls:'ft-temp',border:'rgba(224,32,58,0.45)',  shadow:'0 0 14px rgba(224,32,58,0.1)',   bCls:'b-danger',st:'SHUTDOWN'},
+        'HUM_FAULT': {label:'💧 HIGH HUM',    cls:'ft-hum', border:'rgba(0,119,204,0.35)',  shadow:'0 0 12px rgba(0,119,204,0.08)', bCls:'b-warn',  st:'SHUTDOWN'},
+        'LOAD_FAULT':{label:'📈 OVERLOAD',    cls:'ft-load',border:'rgba(124,68,221,0.35)', shadow:'0 0 12px rgba(124,68,221,0.08)',bCls:'b-warn',  st:'SHUTDOWN'},
+        'OC_FAULT':  {label:'⚡ OVERCURRENT', cls:'ft-oc',  border:'rgba(224,32,58,0.45)',  shadow:'0 0 14px rgba(224,32,58,0.1)',  bCls:'b-danger',st:'SHUTDOWN'},
+        'UV_TRIP':   {label:'⬇ UV TRIP',     cls:'ft-uv',  border:'rgba(212,138,0,0.4)',   shadow:'0 0 12px rgba(212,138,0,0.08)', bCls:'b-warn',  st:'SHUTDOWN'},
+        'EMERGENCY': {label:'🛑 EMERGENCY',   cls:'ft-oc',  border:'rgba(224,32,58,0.5)',   shadow:'0 0 16px rgba(224,32,58,0.12)', bCls:'b-danger',st:'SHUTDOWN'}
+      };
+      const fm=FM[fault]||FM['EMERGENCY'];
+      status=fm.st; bClass=fm.bCls;
+      card.style.border=`1.5px solid ${fm.border}`; card.style.boxShadow=fm.shadow; card.style.opacity='1';
+      fTag.innerHTML=`<span class="fault-tag ${fm.cls}">${fm.label}</span>`;
+      btn.textContent='🔄 FAULT — RESET'; btn.className='dev-btn';
+      btn.style.background='rgba(224,32,58,0.08)'; btn.style.color='var(--red)'; btn.style.border='1.5px solid rgba(224,32,58,0.3)';
+      spd=0;
+      faultLines.push({i, msg:`${fm.label} — ${d.name} (${d.gpio}) → AUTO SHUTDOWN`,
+        cls: fault==='HUM_FAULT'||fault==='UV_TRIP'||fault==='LOAD_FAULT' ? 'fb-motor warn':'fb-motor'});
+    } else {
+      btn.style.background=''; btn.style.color=''; btn.style.border='';
+      if (deviceEnabled[i]) { btn.textContent='⏸ DISABLE'; btn.className='dev-btn dev-on'; }
+      card.style.opacity='1'; card.style.border='1.5px solid var(--border)'; card.style.boxShadow='none';
+      fTag.innerHTML='';
+      spd=Math.max(0,Math.min(100,loadD*(0.72+Math.random()*0.28)));
+      status=spd>5?'RUN':'IDLE'; bClass=spd>5?'b-ok':'b-off';
+    }
+
+    document.getElementById(`dSpd${i}`).textContent=spd.toFixed(0)+'%';
+    document.getElementById(`dBar${i}`).style.width=spd+'%';
+    const b=document.getElementById(`dBadge${i}`);
+    b.textContent=status; b.className=`badge ${bClass}`;
+  });
+
+  const fb=document.getElementById('faultBanner');
+  if (faultLines.length>0) {
+    fb.className='fault-banner visible';
+    fb.innerHTML=faultLines.map(f=>`<div class="fault-line ${f.cls}"><span>${f.msg}</span><button class="clear-btn" onclick="clearDeviceFault(${f.i})">✕ Clear</button></div>`).join('');
+  } else { fb.className='fault-banner'; fb.innerHTML=''; }
+  return faultLines;
+}
+
+function toggleRun() {
+  running=!running;
+  const btn=document.getElementById('runBtn');
+  if (running) {
+    btn.textContent='■ STOP'; btn.classList.add('running');
+    
+    
+    addLog('Boot sequence initiated...','info');
+    addLog('INA219 @ 0x40 ✓','ok');
+    addLog('OLED @ 0x3C ✓','ok');
+    addLog('BH1750 @ 0x23 ✓','ok');
+    addLog('DHT11 GPIO4 ✓','ok');
+    addLog('Per-device fault monitor ACTIVE','ok');
+    addLog('All systems nominal. Running.','ok');
+    simInt=setInterval(simStep,550);
+  } else {
+    btn.textContent='▶ START'; btn.classList.remove('running');
+    clearInterval(simInt);
+    
+    
+    addLog('Simulation stopped.','warn');
+  }
+}
+
+function addLog(msg, type='') {
+  const now=new Date();
+  const ts=`${String(now.getMinutes()).padStart(2,'0')}:${String(now.getSeconds()).padStart(2,'0')}.${String(Math.floor(now.getMilliseconds()/10)).padStart(2,'0')}`;
+  logLines.push({ts,msg,type});
+  if (logLines.length>80) logLines.shift();
+  const box=document.getElementById('logBox');
+  box.innerHTML=logLines.map(l=>`<div class="log-${l.type==='ok'?'ok':l.type==='warn'?'warn':l.type==='err'?'err':'info'}">[${l.ts}] ${l.msg}</div>`).join('');
+  box.scrollTop=box.scrollHeight;
+}
+
+function setScenario(name) {
+  const map={
+    overcurrent: {solar:60,busCurrent:25,temp:32,hum:58,ldrL:55,ldrR:45},
+    undervoltage:{solar:5, busCurrent:30,temp:30,hum:55,ldrL:50,ldrR:50},
+    overheat:    {solar:80,busCurrent:15,temp:52,hum:70,ldrL:70,ldrR:30},
+    overhum:     {solar:70,busCurrent:12,temp:34,hum:92,ldrL:60,ldrR:40},
+    overload:    {solar:65,busCurrent:22,temp:33,hum:60,ldrL:55,ldrR:45},
+    normal:      {solar:70,busCurrent:10,temp:30,hum:55,ldrL:65,ldrR:45},
+  };
+  const s=map[name]; if (!s) return;
+  document.getElementById('solar').value=s.solar;
+  document.getElementById('busCurrent').value=s.busCurrent;
+  document.getElementById('temp').value=s.temp;
+  document.getElementById('hum').value=s.hum;
+  document.getElementById('ldrL').value=s.ldrL;
+  document.getElementById('ldrR').value=s.ldrR;
+  updateLabels();
+  if (!running) toggleRun();
+}
+
+function updateLabels() {
+  document.getElementById('solarV').textContent=document.getElementById('solar').value+'%';
+  document.getElementById('busCurrentV').textContent=(document.getElementById('busCurrent').value/10).toFixed(1)+'A';
+  document.getElementById('tempV').textContent=document.getElementById('temp').value+'°C';
+  document.getElementById('humV').textContent=document.getElementById('hum').value+'%';
+  document.getElementById('ldrLV').textContent=document.getElementById('ldrL').value+'%';
+  document.getElementById('ldrRV').textContent=document.getElementById('ldrR').value+'%';
+}
+
+function simStep() {
+  tick++;
+  
+
+  const solar   =+document.getElementById('solar').value;
+  const busIRaw =+document.getElementById('busCurrent').value/10;
+  const tempC   =+document.getElementById('temp').value;
+  const humPct  =+document.getElementById('hum').value;
+  const ldrLeft =+document.getElementById('ldrL').value;
+  const ldrRight=+document.getElementById('ldrR').value;
+
+  const loadD=Math.min(100,Math.round(busIRaw/4.0*100));
+
+  const pvV    =(solar/100*6.2).toFixed(2);
+  const batDelta=(solar/100*2-busIRaw*0.5)*0.3;
+  batSoC=Math.max(0,Math.min(100,batSoC+batDelta));
+  const batV_n =6.5+batSoC/100*1.4;
+  const busV_n =Math.max(0,4.5+batSoC/100*0.9-loadD/100*0.65+(Math.random()-.5)*0.03);
+  const busI_n =busIRaw+(Math.random()-0.5)*0.04;
+  const busP_n =busV_n*busI_n;
+  const lux    =(solar*9.5+Math.random()*40).toFixed(0);
+  const isUV   =busV_n<4.5;
+
+  document.getElementById('pvV').innerHTML =`<span class="v-ok">${pvV} V</span>`;
+  document.getElementById('batV').innerHTML=`<span class="${batSoC<20?'v-danger':batSoC<40?'v-warn':'v-ok'}">${batV_n.toFixed(2)} V</span>`;
+  document.getElementById('busV').innerHTML=`<span class="${isUV?'v-danger':busV_n<4.8?'v-warn':'v-ok'}">${busV_n.toFixed(2)} V</span>`;
+  document.getElementById('busI').innerHTML=`<span class="${busI_n>3?'v-danger':busI_n>2?'v-warn':'v-ok'}">${busI_n.toFixed(2)} A</span>`;
+  document.getElementById('busP').innerHTML=`<span class="v-blue">${busP_n.toFixed(2)} W</span>`;
+  const socPct=batSoC.toFixed(0);
+  document.getElementById('socVal').innerHTML=`<span class="${batSoC<20?'v-danger':batSoC<40?'v-warn':'v-ok'}">${socPct}%</span>`;
+  const sb=document.getElementById('socBar');
+  sb.style.width=socPct+'%';
+  sb.style.background=batSoC<20?'#e0203a':batSoC<40?'#d48a00':'#00b87a';
+
+  document.getElementById('tmpDisp').innerHTML=`<span class="${tempC>50?'v-danger':tempC>40?'v-warn':'v-ok'}">${tempC} °C</span>`;
+  document.getElementById('humDisp').innerHTML=`<span class="${humPct>90?'v-danger':humPct>80?'v-warn':'v-ok'}">${humPct} %</span>`;
+  document.getElementById('luxDisp').innerHTML=`<span class="v-blue">${lux} lx</span>`;
+  const anyEnvFault=DEVICES.some((d,i)=>deviceFaultState[i]&&['OT_FAULT','HUM_FAULT'].includes(deviceFaultState[i]));
+  document.getElementById('envStat').innerHTML=anyEnvFault?`<span class="badge b-danger">FAULT</span>`:`<span class="badge b-ok">NORMAL</span>`;
+
+  document.getElementById('ldrLBar').style.width=ldrLeft+'%';
+  document.getElementById('ldrRBar').style.width=ldrRight+'%';
+  const diff=ldrLeft-ldrRight;
+  const arrow=document.getElementById('trackArrow');
+  const tMsg=document.getElementById('trackMsg');
+  if (Math.abs(diff)<8){arrow.textContent='·';tMsg.textContent='Aligned — motor idle';}
+  else if (diff>0)      {arrow.textContent='←';tMsg.textContent=`Track LEFT (Δ=${diff})`;}
+  else                  {arrow.textContent='→';tMsg.textContent=`Track RIGHT (Δ=${Math.abs(diff)})`;}
+
+  DEVICES.forEach(d=>{
+    if (!deviceFaultState[d.id]) {
+      checkDeviceFault(d.id,tempC,humPct,loadD,busI_n);
+      if (!deviceFaultState[d.id]&&isUV) {
+        deviceFaultState[d.id]='UV_TRIP';
+        addLog(`${d.name} — UV TRIP ${busV_n.toFixed(2)}V < 4.5V → AUTO SHUTDOWN`,'warn');
+      }
+    }
+  });
+
+  const faultLines=updateDeviceCards(loadD);
+
+  const screen=tick%2===0?1:2;
+  const oled=document.getElementById('oledDisp');
+  const activeFaults=DEVICES.filter(d=>deviceFaultState[d.id]);
+  if (!masterPower) {
+    oled.innerHTML=`<div class="oled-warn">MASTER POWER OFF</div><div class="oled-dim">operator shutdown</div><div class="oled-dim">all devices halted</div><div class="oled-dim">await restart...</div>`;
+  } else if (activeFaults.length>0) {
+    const fl=activeFaults.map(d=>`${d.name.replace(' ','').substring(0,5)}:${deviceFaultState[d.id]?.substring(0,4)||'ERR'}`).join(' ');
+    oled.innerHTML=`<div class="oled-err">!! FAULT DETECTED !!</div><div class="oled-warn">${fl}</div><div class="oled-dim">T:${tempC}C H:${humPct}%</div><div class="oled-dim">I:${busI_n.toFixed(2)}A V:${busV_n.toFixed(2)}V</div>`;
+  } else if (screen===1) {
+    oled.innerHTML=`<div class="oled-dim">── Screen 1/2 ──</div><div class="oled-line">Solar : ${pvV} V</div><div class="oled-line">Bus   : ${busV_n.toFixed(2)}V ${busI_n.toFixed(2)}A</div><div class="oled-line">Power : ${busP_n.toFixed(2)} W | SoC:${socPct}%</div>`;
+  } else {
+    oled.innerHTML=`<div class="oled-dim">── Screen 2/2 ──</div><div class="oled-line">Temp  : ${tempC} C  Hum:${humPct}%</div><div class="oled-line">Lux   : ${lux} lx</div><div class="oled-line">Load  : ${loadD}% ── All OK</div>`;
+  }
+
+  if (tick%3===0) {
+    if (!masterPower) { addLog('MASTER OFF — halted','warn'); }
+    else if (activeFaults.length>0) {
+      addLog(activeFaults.map(d=>`${d.name}:${deviceFaultState[d.id]}`).join(' | '),'err');
+    } else {
+      addLog(`V=${busV_n.toFixed(2)} I=${busI_n.toFixed(2)} T=${tempC} H=${humPct} Load=${loadD}%`,'ok');
+    }
+  }
+}
+
+buildDeviceCards();
+updateLabels();
+</script>
+</body>
+</html>
