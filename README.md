@@ -19,4 +19,4 @@ This repository contains the simulation model for a solar-powered ESP32-based in
 
 ## How to Run
 
-Open the HTML file in a browser:
+Download and open the HTML file in a browser.
